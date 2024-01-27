@@ -45,7 +45,7 @@ $cellPhoneNumber = Read-Host -Prompt "Enter the cell phone number"
 $newUserPath = $existingUser.DistinguishedName -replace "CN=$existingUsername,", ""
 
 # Create the new user
-New-ADUser -SamAccountName $newUsername -UserPrincipalName "$newUsername@$domainName" -GivenName $firstName -Surname $lastName -Name "$firstName $lastName" -DisplayName "$lastName, $firstName" -Enabled $true -Path $newUserPath -AccountPassword ($password | ConvertTo-SecureString -AsPlainText -Force) -ChangePasswordAtLogon $true
+New-ADUser -SamAccountName $newUsername -UserPrincipalName "$userUpn" -GivenName $firstName -Surname $lastName -Name "$firstName $lastName" -DisplayName "$lastName, $firstName" -Enabled $true -Path $newUserPath -AccountPassword ($password | ConvertTo-SecureString -AsPlainText -Force)
 
 # Set the description for the new user
 Set-ADUser -Identity $newUsername -Description $userTitle
@@ -57,11 +57,8 @@ Set-ADUser -Identity $newUsername -Mobile $cellPhoneNumber
 # Note: You can modify this line to prompt for the manager's name if needed
 Set-ADUser -Identity $newUsername -Manager ""
 
-# Generate the email address
-$emailAddress = "$newUsername@$domainName"
-
 # Set the email address for the new user
-Set-ADUser -Identity $newUsername -EmailAddress $emailAddress
+Set-ADUser -Identity $newUsername -EmailAddress $userUPN
 
 # Add the new user to the same groups as the existing user
 foreach ($group in $existingUser.MemberOf) {
