@@ -56,4 +56,4 @@ start_day = find_day(start_date.strftime("%d %m %Y"))
 new_password = (start_day) + start_date.strftime("%m%d%Y").capitalize() + "!"
 sam_account_name = new_user_first_name.lower() + "." + new_user_last_name.lower()
 user_principal_name = sam_account_name + "@" + DOMAIN_NAME
-print(new_password)
+
