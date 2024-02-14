@@ -4,7 +4,6 @@ memberships and a password based on the start date.'''
 ## Imports
 import datetime
 import calendar
-calendar.setfirstweekday(calendar.MONDAY)
 ### import pyad.adquery
 
 ## Functions
@@ -14,7 +13,15 @@ def find_day(date):
     day, month, year = (int(i) for i in date.split(" "))
     day_number = calendar.weekday(year, month, day)
     # Modify days list to start with Sunday as 0
-    days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    days = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+        ]
     return days[day_number]
 
 ### def get_ad_group_memberships()
