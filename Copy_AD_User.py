@@ -47,7 +47,6 @@ SD_GROUP = "your_service_desk_group"
 
 class ADuserException(Exception):
     '''Definig user exceptions'''
-    pass
 
 @dataclass
 class ADUser:
