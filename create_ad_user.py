@@ -6,15 +6,8 @@ import datetime
 import logging
 from dataclasses import Field, asdict, dataclass, field
 
-from ms_active_directory import ADDomain, ADUser, ADGroup
-
-import pyad.adcontainer
-import pyad.addomain
-import pyad.adgroup
-import pyad.adquery
-import pyad.adsearch
-import pyad.aduser
-import pyad.pyadexceptions
+from ms_active_directory import ADDomain, ADUser
+from ldap3.utils.dn import parse_dn
 
 logger = logging.getLogger(__name__)
 
@@ -37,44 +30,28 @@ def find_day(date: datetime.date) -> str:
     return days[day_number]
 
 
-def get_existing_user(username: str) -> pyad.aduser.ADUser:
+def get_existing_user(username: str) -> ADUser:
     """Use pyad to get the group memberships of an existing user."""
-    try:
-        ad_query = pyad.adquery.ADQuery()
-        ad_query.execute_query(
-            attributes=[
-                "memberOf",
-                "title",
-                "description",
-                "displayName",
-                "sAMAccountName",
-                "distinguishedName",
-                "userPrincipalName",
-            ],
-            where_clause=f"sAMAccountName='{username}'",
-        )
-    except pyad.pyadexceptions.noObjectFoundException as e:
-        raise ADuserException(f'Error user objection named "{username}" does not exist.') from e
+    user_attributes = [
+        "memberOf",
+        "title",
+        "description",
+        "displayName",
+        "sAMAccountName",
+        "distinguishedName",
+        "userPrincipalName",
+    ]
+    user = session.find_user_by_sam_name(username, user_attributes)
+    groups = session.find_groups_for_user(user)
 
-    results = ad_query.get_all_results()
-    existing_user = results[0]
-
-    if existing_user["memberOf"]:
-        groups = []
-        for group in existing_user["memberOf"]:
-            new_group = pyad.adgroup.ADGroup.from_dn(group)
-            groups.append(new_group)
-
-        existing_user["memberOf"] = groups
-
-    return existing_user
+    return user, groups
 
 
 # Set environment constants
-DOMAIN_NAME = "birdsnest.network"
+DOMAIN = "birdsnest.network"
+ad_domain = ADDomain(DOMAIN)
+session = ad_domain.create_session_as_computer(computer_name="TEST1")
 SD_GROUP = "your_service_desk_group"
-
-pyad.pyad_setdefaults(ldap_server=DOMAIN_NAME)
 
 
 class ADuserException(Exception):
@@ -82,7 +59,7 @@ class ADuserException(Exception):
 
 
 @dataclass(kw_only=True)
-class ADUser:
+class EIADUser:
     """Definig the ADUser class to create a new user in Active Directory."""
 
     givenname: str
@@ -91,7 +68,7 @@ class ADUser:
     sn: str
     """surname/Last Name of the new user."""
 
-    manager: pyad.aduser.ADUser = field(metadata={"include_in_dict": False})
+    manager: ADUser = field(metadata={"include_in_dict": False})
     """Manager of the new user."""
 
     title: str
@@ -100,7 +77,7 @@ class ADUser:
     mobile: str
     """Mobile number of the new user."""
 
-    copying_from_user: pyad.aduser.ADUser = field(metadata={"include_in_dict": False})
+    copying_from_user: ADUser = field(metadata={"include_in_dict": False})
     """Existing user to copy attributes from."""
 
     start_date: datetime.date = field(default_factory=datetime.date.today)
@@ -134,17 +111,19 @@ class ADUser:
     @property
     def user_principal_name(self) -> str:
         """Defining the userPrincipalName property for the new user."""
-        return f"{self.sam_account_name}@{DOMAIN_NAME}"
+        return f"{self.sam_account_name}@{DOMAIN}"
 
     @property
     def user_dn(self) -> str:
         """Return the distinguished name of the user's container."""
-        existing_user_dn = pyad.adsearch.by_cn(self.copying_from_user["sAMAccountName"])
-        return ",".join(existing_user_dn.split(",")[1:])
+        existing_user_dn = self.copying_from_user.distinguished_name
+        dn_pieces = parse_dn(existing_user_dn, escape=True)
+        dn_pieces.insert(1, f"CN={self.sam_account_name}")
+        return ",".join(dn_pieces[1:])
 
     def as_csv(self) -> str:
         """Return a CSV string of the ADUser class."""
-        user_dict = asdict(self, dict_factory=ADUser.dict_factory(ADUser))
+        user_dict = asdict(self, dict_factory=EIADUser.dict_factory(EIADUser))
         user_dict.update({"manager": self.manager["displayName"]})
         user_dict.update({"copy_of": self.copying_from_user["sAMAccountName"]})
         return ",".join(user_dict.values())
@@ -164,7 +143,7 @@ class ADUser:
             "userPrincipalName": self.user_principal_name,
         }
 
-        new_ad_user: pyad.aduser.ADUser = None
+        new_ad_user: ADUser = None
 
         try:
             ou = pyad.adcontainer.ADContainer.from_dn(self.user_dn)
@@ -209,7 +188,7 @@ if __name__ == "__main__":
     new_user_title = input("Enter the title of the new user: ")
     new_user_start_date = input("Enter the start date of the new user as MMDDYYYY: ")
 
-    new_user = ADUser(
+    new_user = EIADUser(
         givenname=new_user_first_name,
         sn=new_user_last_name,
         title=new_user_title,
