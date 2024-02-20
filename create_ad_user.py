@@ -170,8 +170,6 @@ class EIADUser:
             object_location=self.copying_from_user.location,
             user_password=self.password,
             common_name=self.display_name,
-            company=self.company,
-            department=self.department,
             **attributes,
         )
 
