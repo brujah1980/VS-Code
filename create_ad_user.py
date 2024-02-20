@@ -59,6 +59,8 @@ def get_existing_user(username: str) -> tuple[ADUser, list[ADGroup]]:
         "sAMAccountName",
         "distinguishedName",
         "userPrincipalName",
+        "department",
+        "company",
     ]
     user = session.find_user_by_sam_name(username, user_attributes)
     groups = session.find_groups_for_user(user)
@@ -100,6 +102,12 @@ class EIADUser:
 
     group_memberships: list[ADGroup] = field(metadata={"include_in_dict": False}, default_factory=list)
     """List of groups to add the new user to. Defaults to an empty list."""
+    
+    company: str
+    """Company attribute of the new user."""
+    
+    department: str
+    """Department attribute of the new user."""
 
     @property
     def full_name(self) -> str:
@@ -150,6 +158,8 @@ class EIADUser:
             "mobile": self.mobile,
             "title": self.title,
             "userPrincipalName": self.user_principal_name,
+            "company": self.company,
+            "department": self.department,
         }
 
         # Create new user
@@ -160,6 +170,8 @@ class EIADUser:
             object_location=self.copying_from_user.location,
             user_password=self.password,
             common_name=self.display_name,
+            company=self.company,
+            department=self.department,
             **attributes,
         )
 
@@ -192,6 +204,8 @@ new_user = EIADUser(
     mobile=new_user_mobile_number,
     copying_from_user=copying_from_user,
     group_memberships=copying_from_user_groups,
+    department=copying_from_user.department,
+    company=copying_from_user.company,
 )
 
 # Prompt for start date using datetime module
