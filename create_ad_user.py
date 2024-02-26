@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # %%
 # Set environment constants
-DOMAIN = "birdsnest.network"
+DOMAIN = "Your_domain.com"
 ad_domain = ADDomain(DOMAIN)
 session = ad_domain.create_session_as_user(f"david@{DOMAIN}", authentication_mechanism="GSSAPI")
 SD_GROUP = "your_service_desk_group"
