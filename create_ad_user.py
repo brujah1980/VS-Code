@@ -9,16 +9,17 @@
 import calendar
 import datetime
 import logging
-from dataclasses import Field, asdict, dataclass, field
+from dataclasses import dataclass, field
 
 from ms_active_directory import ADDomain, ADUser, ADGroup
+from ms_active_directory.exceptions import ObjectCreationException
 from ldap3.utils.dn import parse_dn
 
 logger = logging.getLogger(__name__)
 
 # %% [markdown]
 # Environment constants and other values required.
-# 
+#
 # Update `DOMAIN` and `SD_GROUP` to match requirements.
 
 # %%
@@ -102,10 +103,10 @@ class EIADUser:
 
     group_memberships: list[ADGroup] = field(metadata={"include_in_dict": False}, default_factory=list)
     """List of groups to add the new user to. Defaults to an empty list."""
-    
+
     company: str
     """Company attribute of the new user."""
-    
+
     department: str
     """Department attribute of the new user."""
 
@@ -162,16 +163,20 @@ class EIADUser:
             "department": self.department,
         }
 
-        # Create new user
-        new_ad_user = session.create_user(
-            username=self.sam_account_name,
-            first_name=self.givenname,
-            last_name=self.sn,
-            object_location=self.copying_from_user.location,
-            user_password=self.password,
-            common_name=self.display_name,
-            **attributes,
-        )
+        try:
+            # Create new user
+            new_ad_user = session.create_user(
+                username=self.sam_account_name,
+                first_name=self.givenname,
+                last_name=self.sn,
+                object_location=self.copying_from_user.location,
+                user_password=self.password,
+                common_name=self.display_name,
+                **attributes,
+            )
+        except ObjectCreationException as e:
+            logging.error("Error creating new user: %s", e)
+            raise ADuserException(f"Error creating new user: {e}") from e
 
         if self.copying_from_user:
             # Add group memberships to new user
@@ -202,8 +207,8 @@ new_user = EIADUser(
     mobile=new_user_mobile_number,
     copying_from_user=copying_from_user,
     group_memberships=copying_from_user_groups,
-    department=copying_from_user.department,
-    company=copying_from_user.company,
+    department=copying_from_user.get("department"),
+    company=copying_from_user.get("company"),
 )
 
 # Prompt for start date using datetime module
