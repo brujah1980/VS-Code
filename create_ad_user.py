@@ -9,7 +9,7 @@
 import calendar
 import datetime
 import logging
-from dataclasses import Field, asdict, dataclass, field
+from dataclasses import dataclass, field
 
 from ms_active_directory import ADDomain, ADUser, ADGroup
 from ldap3.utils.dn import parse_dn
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # %%
 # Set environment constants
-DOMAIN = "birdsnest.network"
+DOMAIN = "Your_Domain"
 ad_domain = ADDomain(DOMAIN)
 session = ad_domain.create_session_as_user(f"david@{DOMAIN}", authentication_mechanism="GSSAPI")
 SD_GROUP = "your_service_desk_group"
